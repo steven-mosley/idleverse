@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.io Connection Test</title>
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+  <h1>Socket.io Connection Test</h1>
+  <div id="status">Connecting...</div>
+  <div id="events" style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; height: 300px; overflow-y: auto;"></div>
+  
+  <script>
+    // Log to page
+    function log(message) {
+      const events = document.getElementById('events');
+      const item = document.createElement('div');
+      item.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+      events.appendChild(item);
+      events.scrollTop = events.scrollHeight;
+      console.log(message);
+    }
+    
+    // Update status
+    function updateStatus(message, isError = false) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.style.color = isError ? 'red' : 'green';
+    }
+    
+    // Connect to socket
+    log('Attempting to connect to socket...');
+    const socket = io('http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      timeout: 10000
+    });
+    
+    // Connection events
+    socket.on('connect', () => {
+      updateStatus(`Connected with ID: ${socket.id}`);
+      log(`Socket connected with ID: ${socket.id}`);
+      
+      // Request game state
+      socket.emit('requestGameState');
+      log('Requested game state');
+    });
+    
+    socket.on('connect_error', (error) => {
+      updateStatus(`Connection error: ${error.message}`, true);
+      log(`Connection error: ${error.message}`);
+    });
+    
+    socket.on('connect_timeout', () => {
+      updateStatus('Connection timeout', true);
+      log('Connection timeout');
+    });
+    
+    socket.on('disconnect', (reason) => {
+      updateStatus(`Disconnected: ${reason}`, true);
+      log(`Disconnected: ${reason}`);
+    });
+    
+    // Game events
+    socket.on('gameState', (data) => {
+      log(`Received game state: ${JSON.stringify(data, null, 2)}`);
+    });
+    
+    socket.on('playerJoined', (data) => {
+      log(`Player joined: ${JSON.stringify(data, null, 2)}`);
+    });
+    
+    socket.on('chatMessage', (data) => {
+      log(`Chat message: ${JSON.stringify(data, null, 2)}`);
+    });
+  </script>
+</body>
+</html>
