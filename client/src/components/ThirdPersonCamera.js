@@ -52,8 +52,9 @@ const ThirdPersonCamera = ({ active }) => {
       const deltaY = e.clientY - settings.lastMouseY;
       
       if (settings.isRightMouseDown) {
-        // Right mouse button - rotate camera horizontally
+        // Right mouse button - rotate camera (both horizontally and vertically)
         settings.rotationX -= deltaX * 0.01;
+        settings.rotationY = Math.max(0.1, Math.min(Math.PI / 2, settings.rotationY + deltaY * 0.01));
       } else if (settings.isLeftMouseDown) {
         // Left mouse button - orbit camera
         settings.rotationX -= deltaX * 0.01;

@@ -471,29 +471,78 @@
     // Fetch dashboard data from API
     async function fetchDashboardData() {
       try {
-        const response = await fetch('/api/dashboard');
+        // First try the original API endpoint (if available)
+        let response;
+        try {
+          response = await fetch('/api/dashboard');
+        } catch (err) {
+          // Fallback to the direct game world state endpoint
+          response = await fetch('/api/dashboard/gameworld');
+        }
+        
+        if (!response.ok) {
+          console.error('Error fetching dashboard data, status:', response.status);
+          return;
+        }
+        
         const data = await response.json();
         
-        // Update server stats
-        document.getElementById('server-time').textContent = data.server.worldTime;
-        document.getElementById('server-uptime').textContent = data.server.uptime;
-        document.getElementById('tick-rate').textContent = `${data.server.tickRate} ticks/s`;
-        
-        // Update metric cards
-        document.getElementById('player-count').textContent = data.players.count;
-        document.getElementById('resource-count').textContent = data.resources.active;
-        document.getElementById('update-rate').textContent = `${data.performance.tickRate} Hz`;
-        
-        // Update badges
-        document.getElementById('player-badge').textContent = data.players.count;
-        document.getElementById('resource-badge').textContent = data.resources.active;
-        
-        // Update charts
-        updateCharts(data);
-        
-        // Update tables
-        updatePlayerTable(data.players.list);
-        updateResourceTable(data.resources.byType);
+        // Handle different data formats (dashboard controller vs raw game world)
+        if (data.server) {
+          // Standard dashboard controller format
+          // Update server stats
+          document.getElementById('server-time').textContent = data.server.worldTime;
+          document.getElementById('server-uptime').textContent = data.server.uptime;
+          document.getElementById('tick-rate').textContent = `${data.server.tickRate} ticks/s`;
+          
+          // Update metric cards
+          document.getElementById('player-count').textContent = data.players.count;
+          document.getElementById('resource-count').textContent = data.resources.active;
+          document.getElementById('update-rate').textContent = `${data.performance.tickRate} Hz`;
+          
+          // Update badges
+          document.getElementById('player-badge').textContent = data.players.count;
+          document.getElementById('resource-badge').textContent = data.resources.active;
+          
+          // Update charts
+          updateCharts(data);
+          
+          // Update tables
+          updatePlayerTable(data.players.list);
+          updateResourceTable(data.resources.byType);
+        } else {
+          // Raw game world format
+          // Update server stats
+          document.getElementById('server-time').textContent = data.formattedTime || '00:00';
+          document.getElementById('server-uptime').textContent = 'N/A';
+          document.getElementById('tick-rate').textContent = 'N/A';
+          
+          // Update metric cards
+          document.getElementById('player-count').textContent = data.playerCount || 0;
+          document.getElementById('resource-count').textContent = data.activeResourceCount || 0;
+          document.getElementById('update-rate').textContent = 'N/A';
+          
+          // Update badges
+          document.getElementById('player-badge').textContent = data.playerCount || 0;
+          document.getElementById('resource-badge').textContent = data.activeResourceCount || 0;
+          
+          // No chart data in this format
+          // But we can update tables
+          updatePlayerTable(Object.values(data.players || {}));
+          
+          // Create resource type table data
+          const resourcesByType = {};
+          (data.resources || []).forEach(resource => {
+            if (!resourcesByType[resource.type]) {
+              resourcesByType[resource.type] = { total: 0, active: 0 };
+            }
+            resourcesByType[resource.type].total++;
+            if (!resource.depleted) {
+              resourcesByType[resource.type].active++;
+            }
+          });
+          updateResourceTable(resourcesByType);
+        }
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

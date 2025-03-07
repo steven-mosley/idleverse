@@ -204,11 +204,15 @@ const sendGameState = (socket, gameWorld) => {
     worldTime: gameWorld.getFormattedTime()
   };
   
-  console.log(`Sending game state to ${socket.id}:`, {
-    playerCount: Object.keys(gameState.players).length,
-    resourceCount: gameState.resources.length,
-    worldTime: gameState.worldTime
-  });
+  // Only log game state on initial connection or explicit requests, not on polling
+  if (socket._initialStateLog !== true) {
+    console.log(`Sending initial game state to ${socket.id}:`, {
+      playerCount: Object.keys(gameState.players).length,
+      resourceCount: gameState.resources.length,
+      worldTime: gameState.worldTime
+    });
+    socket._initialStateLog = true;
+  }
   
   socket.emit('gameState', gameState);
 };

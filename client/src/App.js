@@ -106,13 +106,13 @@ function App() {
     };
   }, []);
 
-  // Poll for game state updates much more frequently (10Hz)
+  // Poll for game state updates at a reasonable frequency (5Hz)
   useEffect(() => {
     if (connected && gameStarted) {
       console.log("App: Setting up polling interval");
       const intervalId = setInterval(() => {
         requestGameState();
-      }, 100); // Poll every 100ms for more frequent updates
+      }, 200); // Poll every 200ms (5Hz) for updates - reduced from 100ms to decrease server load
       
       return () => clearInterval(intervalId);
     }
