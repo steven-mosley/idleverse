@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DraggablePanel from './common/DraggablePanel';
 
 const InventoryPanel = ({ character, receivedGameState }) => {
   const [loading, setLoading] = useState(true);
@@ -17,10 +18,13 @@ const InventoryPanel = ({ character, receivedGameState }) => {
   if (loading && !character) {
     // Render a placeholder if still loading
     return (
-      <div className="panel inventory-panel">
-        <div className="panel-header">Inventory</div>
+      <DraggablePanel
+        id="inventory-panel"
+        title="Inventory"
+        defaultPosition={{ x: 10, y: 70 }}
+      >
         <div>Loading inventory...</div>
-      </div>
+      </DraggablePanel>
     );
   }
 
@@ -28,9 +32,11 @@ const InventoryPanel = ({ character, receivedGameState }) => {
   const hasItems = Object.keys(inventory).length > 0;
 
   return (
-    <div className="panel inventory-panel">
-      <div className="panel-header">Inventory</div>
-      
+    <DraggablePanel
+      id="inventory-panel"
+      title="Inventory"
+      defaultPosition={{ x: 10, y: 70 }}
+    >
       <ul style={{ listStyleType: 'none', padding: 0 }}>
         {!hasItems && (
           <li style={{ display: 'flex', justifyContent: 'space-between', margin: '5px 0', fontSize: '14px' }}>
@@ -57,7 +63,7 @@ const InventoryPanel = ({ character, receivedGameState }) => {
           </li>
         ))}
       </ul>
-    </div>
+    </DraggablePanel>
   );
 };
 

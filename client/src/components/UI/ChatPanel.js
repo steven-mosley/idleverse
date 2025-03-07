@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import DraggablePanel from './common/DraggablePanel';
 import socket from '../../socket';
 
 const ChatPanel = ({ playerName, messages = [], setMessages, connected }) => {
@@ -51,9 +52,12 @@ const ChatPanel = ({ playerName, messages = [], setMessages, connected }) => {
   };
 
   return (
-    <div className="chat-container panel">
-      <div className="panel-header">Chat</div>
-      
+    <DraggablePanel
+      id="chat-panel"
+      title="Chat"
+      defaultPosition={{ x: window.innerWidth - 320, y: window.innerHeight - 240 }}
+      style={{ width: '300px' }}
+    >
       <div 
         className="chat-messages" 
         ref={messagesRef}
@@ -105,7 +109,7 @@ const ChatPanel = ({ playerName, messages = [], setMessages, connected }) => {
           }}
         />
       </form>
-    </div>
+    </DraggablePanel>
   );
 };
 

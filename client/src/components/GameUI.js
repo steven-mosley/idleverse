@@ -3,6 +3,7 @@ import StatusPanel from './UI/StatusPanel';
 import InventoryPanel from './UI/InventoryPanel';
 import ChatPanel from './UI/ChatPanel';
 import EnhancedDashboard from './UI/EnhancedDashboard';
+import AIControlPanel from './UI/AIControlPanel';
 import { useGameStore } from '../game/store';
 import socket from '../socket';
 
@@ -103,6 +104,8 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
       {showDashboard && (
         <EnhancedDashboard character={character} />
       )}
+      
+      <AIControlPanel />
     </div>
   );
 };
