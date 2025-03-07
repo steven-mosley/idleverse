@@ -10,10 +10,18 @@ export const initSocket = () => {
     return socket;
   }
 
-  console.log("Initializing socket connection to http://localhost:5000");
+  console.log("Initializing socket connection to server");
+  
+  // Get the current hostname or use relative URL
+  // This will connect to the same host serving the client app
+  const socketUrl = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000'
+    : `${window.location.protocol}//${window.location.hostname}:5000`;
+  
+  console.log(`Connecting to socket server at ${socketUrl}`);
   
   // Use the EXACT same configuration that worked in socket-test.html
-  socket = io('http://localhost:5000', {
+  socket = io(socketUrl, {
     transports: ['websocket', 'polling'],
     reconnectionAttempts: 5,
     timeout: 10000

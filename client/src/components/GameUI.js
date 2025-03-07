@@ -62,7 +62,13 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
 
   // Toggle dashboard visibility
   const toggleDashboard = () => {
+    // For the in-game dashboard
     setShowDashboard(!showDashboard);
+  };
+  
+  // Open developer dashboard in new window
+  const openDevDashboard = () => {
+    window.open('/dashboard', 'idleverse_dashboard', 'width=1200,height=800');
   };
 
   return (
@@ -70,20 +76,39 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
       <div className="top-bar">
         <div className="game-title">Idleverse</div>
         <div id="world-info">World time: {displayTime}</div>
-        <button 
-          onClick={toggleDashboard}
-          style={{
-            marginLeft: 'auto',
-            background: showDashboard ? '#ffd700' : 'rgba(255,255,255,0.2)',
-            border: 'none',
-            color: showDashboard ? '#000' : '#fff',
-            padding: '5px 10px',
-            borderRadius: '3px',
-            cursor: 'pointer'
-          }}
-        >
-          {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
-        </button>
+        <div style={{ 
+          display: 'flex', 
+          marginLeft: 'auto', 
+          gap: '10px',
+          pointerEvents: 'all' // Enable pointer events for the buttons container
+        }}>
+          <button 
+            onClick={toggleDashboard}
+            style={{
+              background: showDashboard ? '#ffd700' : 'rgba(255,255,255,0.2)',
+              border: 'none',
+              color: showDashboard ? '#000' : '#fff',
+              padding: '5px 10px',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
+          </button>
+          <button 
+            onClick={openDevDashboard}
+            style={{
+              background: 'rgba(0,128,255,0.5)',
+              border: 'none',
+              color: '#fff',
+              padding: '5px 10px',
+              borderRadius: '3px',
+              cursor: 'pointer'
+            }}
+          >
+            Dev Dashboard
+          </button>
+        </div>
       </div>
 
       <StatusPanel 

@@ -242,6 +242,19 @@ class GameWorld {
     
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   }
+  
+  // Get all game world state for the dashboard
+  getDashboardState() {
+    return {
+      time: this.time,
+      formattedTime: this.getFormattedTime(),
+      playerCount: Object.keys(this.players).length,
+      resourceCount: this.resources.length,
+      activeResourceCount: this.resources.filter(r => !r.depleted).length,
+      players: this.players,
+      resources: this.resources
+    };
+  }
 }
 
 module.exports = GameWorld;

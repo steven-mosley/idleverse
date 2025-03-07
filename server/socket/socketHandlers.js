@@ -58,6 +58,17 @@ const initSocketHandlers = (io, gameWorld) => {
         worldTime: gameWorld.getFormattedTime()
       };
       
+      // Only log when explicitly requested by client, not on polling
+      if (socket._lastStateRequest === undefined || 
+          Date.now() - socket._lastStateRequest > 5000) {
+        console.log(`Game state requested by ${socket.id}:`, {
+          playerCount: Object.keys(gameState.players).length,
+          resourceCount: gameState.resources.length,
+          worldTime: gameState.worldTime
+        });
+        socket._lastStateRequest = Date.now();
+      }
+      
       socket.emit('gameState', gameState);
     });
     

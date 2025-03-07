@@ -87,6 +87,11 @@ app.get('/api/dashboard', (req, res) => {
   res.json(dashboardData);
 });
 
+// API route for game world state (for the dashboard)
+app.get('/api/dashboard/gameworld', (req, res) => {
+  res.json(gameWorld.getDashboardState());
+});
+
 // API route to force cleanup of all connections (for debugging)
 app.get('/api/reset-connections', (req, res) => {
   const playersBefore = Object.keys(gameWorld.getPlayers()).length;
@@ -123,11 +128,18 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
+// Catch all requests to the dashboard path that aren't the main HTML file
+app.get('/dashboard/*', (req, res) => {
+  res.redirect('/dashboard');
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Idleverse server running on port ${PORT}`);
-  console.log(`Open http://localhost:3000 in your browser to play`);
+const HOST = process.env.HOST || '0.0.0.0'; // Listen on all network interfaces
+server.listen(PORT, HOST, () => {
+  console.log(`Idleverse server running on ${HOST}:${PORT}`);
+  console.log(`Local access: http://localhost:${PORT}`);
+  console.log(`Network access: Use your computer's IP address with port ${PORT}`);
   console.log(`Server health check: http://localhost:${PORT}/api/health`);
   console.log(`Server game state: http://localhost:${PORT}/api/gamestate`);
   console.log(`Server dashboard: http://localhost:${PORT}/dashboard`);
