@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
 import { useGameStore } from '../game/store';
 
 export const AuthContext = createContext();
@@ -17,12 +16,19 @@ export const AuthProvider = ({ children }) => {
     const checkLoggedIn = async () => {
       if (token) {
         try {
-          // Set auth header
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          // Make request with auth header
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
           
-          // Get user data
-          const res = await axios.get('/api/auth/me');
-          setUser(res.data.user);
+          if (!response.ok) {
+            throw new Error('Authentication failed');
+          }
+          
+          const data = await response.json();
+          setUser(data.user);
           setError(null);
         } catch (err) {
           console.error('Authentication error:', err);
@@ -31,8 +37,6 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('idleverse_token');
           setToken(null);
           setUser(null);
-          
-          delete axios.defaults.headers.common['Authorization'];
           setError('Session expired. Please log in again.');
         } finally {
           setLoading(false);
@@ -64,21 +68,31 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      const res = await axios.post('/api/auth/register', userData);
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
       
-      if (res.data.token) {
-        localStorage.setItem('idleverse_token', res.data.token);
-        setToken(res.data.token);
-        setUser(res.data.user);
-        
-        // Set auth header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.token) {
+        localStorage.setItem('idleverse_token', data.token);
+        setToken(data.token);
+        setUser(data.user);
         setError(null);
         
         return true;
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.message || 'Registration failed');
       return false;
     } finally {
       setLoading(false);
@@ -90,21 +104,31 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      const res = await axios.post('/api/auth/login', userData);
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
       
-      if (res.data.token) {
-        localStorage.setItem('idleverse_token', res.data.token);
-        setToken(res.data.token);
-        setUser(res.data.user);
-        
-        // Set auth header
-        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.token) {
+        localStorage.setItem('idleverse_token', data.token);
+        setToken(data.token);
+        setUser(data.user);
         setError(null);
         
         return true;
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.message || 'Login failed');
       return false;
     } finally {
       setLoading(false);
@@ -116,9 +140,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('idleverse_token');
     setToken(null);
     setUser(null);
-    
-    // Remove auth header
-    delete axios.defaults.headers.common['Authorization'];
     
     // Reconnect socket without authentication
     if (socket) {

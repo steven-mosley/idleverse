@@ -9,6 +9,9 @@ class EnhancedGameWorld extends GameWorld {
     // Player mapping from socketId to userId
     this.playerUserMap = {};
     
+    // AI characters tracking
+    this.aiPlayers = new Set();
+    
     // Add auto-save interval
     this.autoSaveInterval = null;
   }
@@ -214,6 +217,22 @@ class EnhancedGameWorld extends GameWorld {
     }
   }
   
+  // Add an AI character to the game world
+  addAICharacter(socketId, character) {
+    // Add to players collection
+    this.players[socketId] = character;
+    
+    // Track as AI player
+    this.aiPlayers.add(socketId);
+    
+    return this.players[socketId];
+  }
+  
+  // Check if a player is an AI
+  isAIPlayer(socketId) {
+    return this.aiPlayers.has(socketId);
+  }
+  
   // Override removePlayer to save data if authenticated
   async removePlayer(socketId) {
     // Get user ID if this was an authenticated player
@@ -237,6 +256,11 @@ class EnhancedGameWorld extends GameWorld {
       
       // Remove from player-user mapping
       delete this.playerUserMap[socketId];
+    }
+    
+    // Remove from AI tracking if applicable
+    if (this.aiPlayers.has(socketId)) {
+      this.aiPlayers.delete(socketId);
     }
     
     // Now remove from in-memory players

@@ -14,6 +14,9 @@ const connectDB = require('./config/db');
 // Import enhanced game world
 const EnhancedGameWorld = require('./models/EnhancedGameWorld');
 
+// Import AI Service
+const AIService = require('./services/aiService');
+
 // Import dashboard controller
 const dashboardController = require('./controllers/dashboardController');
 
@@ -43,6 +46,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API routes
@@ -68,6 +72,14 @@ connectDB()
     // Log world state
     console.log(`Created ${gameWorld.resources.length} resources`);
     
+    // Initialize AI service
+    const aiService = new AIService(gameWorld);
+    await aiService.initialize();
+    
+    // Enable AI by default
+    aiService.enable();
+    console.log('AI Service enabled with default settings');
+    
     // Import enhanced socket handlers
     const initEnhancedSocketHandlers = require('./socket/enhancedSocketHandlers');
     
@@ -81,6 +93,14 @@ connectDB()
       
       if (dbConnected) {
         try {
+          // Disable AI service to prevent new updates
+          aiService.disable();
+          console.log('AI service disabled');
+          
+          // Save AI state
+          await aiService.saveAIStateToDB();
+          console.log('AI state saved');
+          
           // Save world state
           await gameWorld.saveWorldState();
           
@@ -88,8 +108,12 @@ connectDB()
           const playerIds = Object.keys(gameWorld.getPlayers());
           console.log(`Saving data for ${playerIds.length} players...`);
           
+          // Filter out AI players
+          const humanPlayerIds = playerIds.filter(id => !gameWorld.isAIPlayer(id));
+          console.log(`Found ${humanPlayerIds.length} human players to save...`);
+          
           // We're using removePlayer to trigger data saving
-          for (const socketId of playerIds) {
+          for (const socketId of humanPlayerIds) {
             await gameWorld.removePlayer(socketId);
           }
           
@@ -129,6 +153,37 @@ connectDB()
     app.get('/api/dashboard', (req, res) => {
       const dashboardData = dashboardController.getDashboardData(gameWorld);
       res.json(dashboardData);
+    });
+    
+    // AI System API routes
+    app.get('/api/ai/status', (req, res) => {
+      res.json({
+        status: 'ok',
+        ai: aiService.getStatus()
+      });
+    });
+    
+    app.post('/api/ai/toggle', (req, res) => {
+      const { enabled } = req.body;
+      if (enabled) {
+        aiService.enable();
+      } else {
+        aiService.disable();
+      }
+      res.json({
+        status: 'ok',
+        message: `AI system ${enabled ? 'enabled' : 'disabled'}`,
+        ai: aiService.getStatus()
+      });
+    });
+    
+    app.post('/api/ai/config', (req, res) => {
+      aiService.setConfig(req.body);
+      res.json({
+        status: 'ok',
+        message: 'AI configuration updated',
+        ai: aiService.getStatus()
+      });
     });
     
     // Serve static files from the React app in production

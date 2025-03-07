@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DraggablePanel from './common/DraggablePanel';
 import { useGameStore } from '../../game/store';
 
 // Icons (either use Lucide React if installed or create custom icons)
@@ -867,48 +868,13 @@ const EnhancedDashboard = ({ character }) => {
   }
 
   return (
-    <div className="dashboard panel" style={{ 
-      position: 'absolute',
-      top: '70px',
-      right: '10px',
-      width: '320px',
-      maxHeight: '500px',
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      border: '1px solid #444',
-      borderRadius: '5px',
-      color: '#fff',
-      zIndex: 3,
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    }}>
-      <div className="panel-header" style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px',
-        borderBottom: '1px solid #444',
-        fontSize: '16px',
-        fontWeight: 'bold',
-        color: '#ffd700'
-      }}>
-        <span>Idleverse Dashboard</span>
-        <div 
-          className="dashboard-collapse"
-          onClick={() => setShowDashboard(false)}
-          style={{
-            cursor: 'pointer',
-            opacity: 0.7,
-            transition: 'opacity 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.opacity = 1}
-          onMouseOut={(e) => e.currentTarget.style.opacity = 0.7}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </div>
-      </div>
+    <DraggablePanel
+      id="enhanced-dashboard"
+      title="Idleverse Dashboard"
+      defaultPosition={{ x: window.innerWidth - 330, y: 70 }}
+      onClose={() => setShowDashboard(false)}
+      style={{ width: '320px', maxHeight: '500px' }}
+    >
       
       <div className="dashboard-tabs" style={{ 
         display: 'flex', 
@@ -1012,7 +978,7 @@ const EnhancedDashboard = ({ character }) => {
       }}>
         {renderTabContent()}
       </div>
-    </div>
+    </DraggablePanel>
   );
 };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DraggablePanel from './common/DraggablePanel';
 
 const StatusPanel = ({ character, receivedGameState }) => {
   const [loading, setLoading] = useState(true);
@@ -17,18 +18,24 @@ const StatusPanel = ({ character, receivedGameState }) => {
   if (loading && !character) {
     // Render a placeholder if still loading
     return (
-      <div className="status-panel panel">
-        <div className="panel-header">Character Status</div>
+      <DraggablePanel
+        id="status-panel"
+        title="Character Status"
+        defaultPosition={{ x: 10, y: 250 }}
+      >
         <div>Loading character data...</div>
-      </div>
+      </DraggablePanel>
     );
   }
 
   // Create a simple character display if no data available
   if (!character) {
     return (
-      <div className="status-panel panel">
-        <div className="panel-header">Character Status</div>
+      <DraggablePanel
+        id="status-panel"
+        title="Character Status"
+        defaultPosition={{ x: 10, y: 250 }}
+      >
         <div className="character-status">
           <div className="character-avatar" style={{ 
             width: '40px',
@@ -50,7 +57,7 @@ const StatusPanel = ({ character, receivedGameState }) => {
           </div>
         </div>
         <div className="status-text">Position: (0.0, 0.0)</div>
-      </div>
+      </DraggablePanel>
     );
   }
 
@@ -63,9 +70,11 @@ const StatusPanel = ({ character, receivedGameState }) => {
   };
 
   return (
-    <div className="status-panel panel">
-      <div className="panel-header">Character Status</div>
-      
+    <DraggablePanel
+      id="status-panel"
+      title="Character Status"
+      defaultPosition={{ x: 10, y: 250 }}
+    >
       <div className="character-status">
         <div 
           className="character-avatar" 
@@ -107,7 +116,7 @@ const StatusPanel = ({ character, receivedGameState }) => {
           <div className="attribute">CHA: {character.attributes.charisma?.value || 0}</div>
         </div>
       )}
-    </div>
+    </DraggablePanel>
   );
 };
 
