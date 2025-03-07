@@ -1,4 +1,5 @@
-// Socket.io event handlers
+// Enhanced Socket.io event handlers with authentication support
+const { verifyToken } = require('../utils/jwt');
 
 // Map to store last activity time for each client
 const clientActivity = new Map();
@@ -12,53 +13,73 @@ const INACTIVITY_TIMEOUT = 60000;
 // Game update interval in milliseconds (33ms = 30 updates per second)
 const UPDATE_INTERVAL = 33;
 
-const initSocketHandlers = (io, gameWorld) => {
+const initEnhancedSocketHandlers = (io, gameWorld) => {
   // Set up periodic cleanup of inactive connections
   setInterval(() => cleanupInactiveConnections(io, gameWorld), CLEANUP_INTERVAL);
 
   // Handle socket connections
-  io.on('connection', (socket) => {
-    console.log('New player connected:', socket.id);
+  io.on('connection', async (socket) => {
+    console.log('New connection established:', socket.id);
     
     // Record activity time
     updateClientActivity(socket.id);
     
-    // Create new player
-    gameWorld.addPlayer(socket.id);
-    console.log('Player created with position:', gameWorld.getPlayer(socket.id).position);
-    
-    // Log resource count
-    console.log(`Resources available: ${gameWorld.getResources().filter(r => !r.depleted).length}`);
-    
-    // Send existing game state to the new player
-    const gameState = {
-      players: gameWorld.getPlayers(),
-      resources: gameWorld.getResources(),
-      worldTime: gameWorld.getFormattedTime()
-    };
-    
-    console.log(`Sending initial game state to ${socket.id}:`, {
-      playerCount: Object.keys(gameState.players).length,
-      resourceCount: gameState.resources.length,
-      worldTime: gameState.worldTime
+    // Handle authentication
+    socket.on('authenticate', async (authData) => {
+      try {
+        // Verify token
+        const decoded = verifyToken(authData.token);
+        const userId = decoded.userId;
+        
+        console.log(`Player ${socket.id} authenticated as user ${userId}`);
+        
+        // Create authenticated player with database loading
+        const player = await gameWorld.addAuthenticatedPlayer(socket.id, userId);
+        
+        // Acknowledge successful authentication
+        socket.emit('authSuccess', {
+          playerId: socket.id,
+          playerName: player.name
+        });
+        
+        // Send game state
+        sendGameState(socket, gameWorld);
+        
+        // Tell everyone about the new player
+        socket.broadcast.emit('playerJoined', gameWorld.getPlayer(socket.id));
+      } catch (error) {
+        console.error('Authentication error:', error);
+        socket.emit('authError', { message: 'Authentication failed' });
+        
+        // Create non-authenticated player as fallback
+        fallbackPlayerCreation(socket, gameWorld);
+      }
     });
     
-    socket.emit('gameState', gameState);
+    // For compatibility with clients that don't authenticate, create a player without authentication
+    // Also triggered if authentication fails
+    socket.on('joinAsGuest', (data) => {
+      fallbackPlayerCreation(socket, gameWorld, data?.name);
+    });
     
-    // Tell everyone about the new player
-    socket.broadcast.emit('playerJoined', gameWorld.getPlayer(socket.id));
+    // Create a default player if no auth attempt within 5 seconds
+    const authTimeout = setTimeout(() => {
+      // Only create guest player if not already authenticated
+      if (!gameWorld.getPlayer(socket.id)) {
+        console.log(`Socket ${socket.id} did not authenticate, creating guest player`);
+        fallbackPlayerCreation(socket, gameWorld);
+      }
+    }, 5000);
+    
+    // Clear timeout if socket disconnects or is authenticated
+    socket.on('disconnect', () => {
+      clearTimeout(authTimeout);
+    });
     
     // Handle request for game state
     socket.on('requestGameState', () => {
       updateClientActivity(socket.id);
-      
-      const gameState = {
-        players: gameWorld.getPlayers(),
-        resources: gameWorld.getResources(),
-        worldTime: gameWorld.getFormattedTime()
-      };
-      
-      socket.emit('gameState', gameState);
+      sendGameState(socket, gameWorld);
     });
     
     // Handle heartbeat/ping
@@ -125,7 +146,17 @@ const initSocketHandlers = (io, gameWorld) => {
       updateClientActivity(socket.id);
       
       console.log('Player', socket.id, 'set auto-gather to', enabled);
-      gameWorld.updatePlayer(socket.id, { autoGatherEnabled: enabled });
+      
+      // Update player preferences
+      const player = gameWorld.getPlayer(socket.id);
+      if (player) {
+        if (!player.preferences) {
+          player.preferences = {};
+        }
+        player.preferences.autoGatherEnabled = enabled;
+        gameWorld.updatePlayer(socket.id, { preferences: player.preferences });
+      }
+      
       socket.emit('autoGatherUpdated', enabled);
     });
     
@@ -143,6 +174,45 @@ const initSocketHandlers = (io, gameWorld) => {
   }, UPDATE_INTERVAL);
 };
 
+// Helper function to create a non-authenticated player
+const fallbackPlayerCreation = (socket, gameWorld, guestName = null) => {
+  // Only create player if one doesn't already exist for this socket
+  if (!gameWorld.getPlayer(socket.id)) {
+    // Create new player
+    const player = gameWorld.addPlayer(socket.id);
+    
+    // Set custom name if provided
+    if (guestName) {
+      player.name = guestName;
+    }
+    
+    console.log(`Created guest player for socket ${socket.id}: ${player.name}`);
+    
+    // Send game state
+    sendGameState(socket, gameWorld);
+    
+    // Tell everyone about the new player
+    socket.broadcast.emit('playerJoined', player);
+  }
+};
+
+// Helper function to send game state to a client
+const sendGameState = (socket, gameWorld) => {
+  const gameState = {
+    players: gameWorld.getPlayers(),
+    resources: gameWorld.getResources(),
+    worldTime: gameWorld.getFormattedTime()
+  };
+  
+  console.log(`Sending game state to ${socket.id}:`, {
+    playerCount: Object.keys(gameState.players).length,
+    resourceCount: gameState.resources.length,
+    worldTime: gameState.worldTime
+  });
+  
+  socket.emit('gameState', gameState);
+};
+
 // Helper to update client activity timestamp
 function updateClientActivity(socketId) {
   clientActivity.set(socketId, Date.now());
@@ -153,7 +223,7 @@ function handlePlayerDisconnect(socketId, gameWorld, io) {
   // Remove player from clientActivity tracking
   clientActivity.delete(socketId);
   
-  // Remove player from game world
+  // Remove player from game world (which now saves to DB if authenticated)
   gameWorld.removePlayer(socketId);
   
   // Notify all clients
@@ -192,4 +262,4 @@ function cleanupInactiveConnections(io, gameWorld) {
   }
 }
 
-module.exports = initSocketHandlers;
+module.exports = initEnhancedSocketHandlers;

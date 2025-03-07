@@ -38,12 +38,11 @@ function App() {
     };
     
     const handleGameState = (data) => {
-      console.log('App: Received game state:', data);
+      console.log('App: Received game state');
       setReceivedGameState(true);
       
       // Update store with received data
       if (data.worldTime) {
-        console.log('App: Setting world time to', data.worldTime);
         setWorldTime(data.worldTime);
         setLocalWorldTime(data.worldTime);
       }
@@ -107,13 +106,13 @@ function App() {
     };
   }, []);
 
-  // Poll for game state updates much more frequently
+  // Poll for game state updates much more frequently (10Hz)
   useEffect(() => {
     if (connected && gameStarted) {
       console.log("App: Setting up polling interval");
       const intervalId = setInterval(() => {
         requestGameState();
-      }, 500); // Poll every 500ms for smoother updates
+      }, 100); // Poll every 100ms for more frequent updates
       
       return () => clearInterval(intervalId);
     }
@@ -170,7 +169,7 @@ function App() {
         {socket ? ` (${socket.id || 'no id'})` : ' (no socket)'}
       </div>
       
-      {/* Debug overlay to show world time */}
+      {/* Debug overlay */}
       {gameStarted && (
         <div style={{ 
           position: 'absolute', 
@@ -181,7 +180,7 @@ function App() {
           padding: '5px',
           zIndex: 100
         }}>
-          Local Time: {localWorldTime} | Store Time: {worldTime}
+          Time: {localWorldTime}
         </div>
       )}
     </div>

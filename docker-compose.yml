@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: idleverse-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=idleverse
+    restart: unless-stopped
+    networks:
+      - idleverse-network
+
+volumes:
+  mongodb_data:
+    name: idleverse-mongodb-data
+
+networks:
+  idleverse-network:
+    driver: bridge

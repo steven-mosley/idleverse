@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Idleverse Development Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .dashboard-header {
+      background-color: #343a40;
+      color: white;
+      padding: 15px 0;
+      margin-bottom: 20px;
+    }
+    .metric-card {
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      transition: transform 0.2s;
+    }
+    .metric-card:hover {
+      transform: translateY(-5px);
+    }
+    .metric-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+    .metric-label {
+      color: #6c757d;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+    .resource-type {
+      display: inline-block;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .player-table, .resource-table {
+      font-size: 0.85rem;
+    }
+    .chart-container {
+      position: relative;
+      height: 200px;
+      width: 100%;
+    }
+    .state-idle {
+      color: #6c757d;
+    }
+    .state-moving {
+      color: #ffc107;
+    }
+    .state-gathering {
+      color: #28a745;
+    }
+    .badge-count {
+      font-size: 1.2rem;
+      padding: 8px 12px;
+    }
+    .refresh-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    .auto-refresh {
+      position: fixed;
+      bottom: 20px;
+      right: 150px;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h1>Idleverse Development Dashboard</h1>
+        </div>
+        <div class="col-md-6 text-end">
+          <span id="server-time" class="badge bg-secondary me-2">00:00</span>
+          <span id="server-uptime" class="badge bg-secondary me-2">0d 0h 0m 0s</span>
+          <span id="tick-rate" class="badge bg-info">0 ticks/s</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card metric-card bg-primary text-white">
+          <div class="card-body">
+            <h5 class="card-title">Connected Players</h5>
+            <p class="metric-value" id="player-count">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card metric-card bg-success text-white">
+          <div class="card-body">
+            <h5 class="card-title">Active Resources</h5>
+            <p class="metric-value" id="resource-count">0</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card metric-card bg-info text-white">
+          <div class="card-body">
+            <h5 class="card-title">Server Update Rate</h5>
+            <p class="metric-value" id="update-rate">0 Hz</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card metric-card">
+          <div class="card-body">
+            <h5 class="card-title">Players Over Time</h5>
+            <div class="chart-container">
+              <canvas id="players-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card metric-card">
+          <div class="card-body">
+            <h5 class="card-title">Resources Over Time</h5>
+            <div class="chart-container">
+              <canvas id="resources-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card metric-card">
+          <div class="card-body">
+            <h5 class="card-title">Tick Rate</h5>
+            <div class="chart-container">
+              <canvas id="tick-chart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Stats Row -->
+    <div class="row">
+      <!-- Player Details -->
+      <div class="col-md-6">
+        <div class="card metric-card">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Connected Players</h5>
+              <span id="player-badge" class="badge bg-primary badge-count">0</span>
+            </div>
+          </div>
+          <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+            <table id="player-table" class="table table-sm table-hover player-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Position</th>
+                  <th>State</th>
+                  <th>Inventory</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Player rows will be populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resource Details -->
+      <div class="col-md-6">
+        <div class="card metric-card">
+          <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Resource Distribution</h5>
+              <span id="resource-badge" class="badge bg-success badge-count">0</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <canvas id="resource-pie-chart"></canvas>
+              </div>
+              <div class="col-md-6">
+                <table id="resource-table" class="table table-sm table-hover resource-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Active</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <!-- Resource rows will be populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refresh Button -->
+  <button id="refresh-btn" class="btn btn-primary refresh-btn">
+    <i class="bi bi-arrow-clockwise"></i> Refresh Data
+  </button>
+  
+  <!-- Auto Refresh Toggle -->
+  <div class="auto-refresh">
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
+      <label class="form-check-label" for="auto-refresh">Auto Refresh (2s)</label>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Charts configuration
+    let playersChart = null;
+    let resourcesChart = null;
+    let tickChart = null;
+    let resourcePieChart = null;
+    
+    // Auto refresh interval
+    let refreshInterval = null;
+    const REFRESH_RATE = 2000; // 2 seconds
+    
+    // Resource type colors
+    const RESOURCE_COLORS = {
+      wood: '#8B4513',
+      stone: '#A9A9A9',
+      food: '#FF6347',
+      iron: '#B0C4DE',
+      herbs: '#90EE90'
+    };
+    
+    // Player state styles
+    const PLAYER_STATES = {
+      idle: 'state-idle',
+      moving: 'state-moving',
+      gathering: 'state-gathering'
+    };
+    
+    // Initialize charts
+    function initCharts() {
+      // Players chart
+      const playersCtx = document.getElementById('players-chart').getContext('2d');
+      playersChart = new Chart(playersCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Players',
+            data: [],
+            borderColor: '#0d6efd',
+            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          },
+          maintainAspectRatio: false,
+          animation: false
+        }
+      });
+      
+      // Resources chart
+      const resourcesCtx = document.getElementById('resources-chart').getContext('2d');
+      resourcesChart = new Chart(resourcesCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Resources',
+            data: [],
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0 }
+            }
+          },
+          maintainAspectRatio: false,
+          animation: false
+        }
+      });
+      
+      // Tick rate chart
+      const tickCtx = document.getElementById('tick-chart').getContext('2d');
+      tickChart = new Chart(tickCtx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Ticks/s',
+            data: [],
+            borderColor: '#0dcaf0',
+            backgroundColor: 'rgba(13, 202, 240, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              suggestedMax: 50
+            }
+          },
+          maintainAspectRatio: false,
+          animation: false
+        }
+      });
+      
+      // Resource pie chart
+      const resourcePieCtx = document.getElementById('resource-pie-chart').getContext('2d');
+      resourcePieChart = new Chart(resourcePieCtx, {
+        type: 'doughnut',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            backgroundColor: [],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true
+        }
+      });
+    }
+    
+    // Update chart data
+    function updateCharts(data) {
+      // Format time for x-axis labels
+      const formatTime = (timestamp) => {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString();
+      };
+      
+      // Update players chart
+      if (data.players.history && data.players.history.length > 0) {
+        playersChart.data.labels = data.players.history.map(item => formatTime(item.time));
+        playersChart.data.datasets[0].data = data.players.history.map(item => item.value);
+        playersChart.update();
+      }
+      
+      // Update resources chart
+      if (data.resources.history && data.resources.history.length > 0) {
+        resourcesChart.data.labels = data.resources.history.map(item => formatTime(item.time));
+        resourcesChart.data.datasets[0].data = data.resources.history.map(item => item.value);
+        resourcesChart.update();
+      }
+      
+      // Update tick rate chart
+      if (data.performance.history && data.performance.history.length > 0) {
+        tickChart.data.labels = data.performance.history.map(item => formatTime(item.time));
+        tickChart.data.datasets[0].data = data.performance.history.map(item => parseFloat(item.value));
+        tickChart.update();
+      }
+      
+      // Update resource pie chart
+      if (data.resources.byType) {
+        const resourceTypes = Object.keys(data.resources.byType);
+        const activeResources = resourceTypes.map(type => data.resources.byType[type].active);
+        const resourceColors = resourceTypes.map(type => RESOURCE_COLORS[type] || '#FFC107');
+        
+        resourcePieChart.data.labels = resourceTypes;
+        resourcePieChart.data.datasets[0].data = activeResources;
+        resourcePieChart.data.datasets[0].backgroundColor = resourceColors;
+        resourcePieChart.update();
+      }
+    }
+    
+    // Update player table
+    function updatePlayerTable(players) {
+      const tableBody = document.getElementById('player-table').querySelector('tbody');
+      tableBody.innerHTML = '';
+      
+      players.forEach(player => {
+        const row = document.createElement('tr');
+        
+        // Format position
+        const position = `(${player.position.x.toFixed(1)}, ${player.position.y.toFixed(1)})`;
+        
+        // Format inventory
+        let inventory = '';
+        if (player.inventory && Object.keys(player.inventory).length > 0) {
+          inventory = Object.entries(player.inventory)
+            .map(([type, amount]) => {
+              return `<span class="badge bg-secondary me-1">
+                <span class="resource-type" style="background-color: ${RESOURCE_COLORS[type] || '#FFC107'}"></span>
+                ${type}: ${Math.floor(amount)}
+              </span>`;
+            })
+            .join(' ');
+        } else {
+          inventory = '<span class="text-muted">Empty</span>';
+        }
+        
+        // Create cells
+        row.innerHTML = `
+          <td>${player.name}</td>
+          <td>${position}</td>
+          <td><span class="${PLAYER_STATES[player.state] || ''}">${player.state}</span></td>
+          <td>${inventory}</td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+    }
+    
+    // Update resource table
+    function updateResourceTable(resourcesByType) {
+      const tableBody = document.getElementById('resource-table').querySelector('tbody');
+      tableBody.innerHTML = '';
+      
+      Object.entries(resourcesByType).forEach(([type, counts]) => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+          <td>
+            <span class="resource-type" style="background-color: ${RESOURCE_COLORS[type] || '#FFC107'}"></span>
+            ${type}
+          </td>
+          <td>${counts.active}</td>
+          <td>${counts.total}</td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+    }
+    
+    // Fetch dashboard data from API
+    async function fetchDashboardData() {
+      try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        
+        // Update server stats
+        document.getElementById('server-time').textContent = data.server.worldTime;
+        document.getElementById('server-uptime').textContent = data.server.uptime;
+        document.getElementById('tick-rate').textContent = `${data.server.tickRate} ticks/s`;
+        
+        // Update metric cards
+        document.getElementById('player-count').textContent = data.players.count;
+        document.getElementById('resource-count').textContent = data.resources.active;
+        document.getElementById('update-rate').textContent = `${data.performance.tickRate} Hz`;
+        
+        // Update badges
+        document.getElementById('player-badge').textContent = data.players.count;
+        document.getElementById('resource-badge').textContent = data.resources.active;
+        
+        // Update charts
+        updateCharts(data);
+        
+        // Update tables
+        updatePlayerTable(data.players.list);
+        updateResourceTable(data.resources.byType);
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    }
+    
+    // Initialize dashboard
+    function initDashboard() {
+      initCharts();
+      
+      // Initial data fetch
+      fetchDashboardData();
+      
+      // Set up refresh button
+      document.getElementById('refresh-btn').addEventListener('click', fetchDashboardData);
+      
+      // Set up auto refresh toggle
+      const autoRefreshToggle = document.getElementById('auto-refresh');
+      
+      autoRefreshToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          refreshInterval = setInterval(fetchDashboardData, REFRESH_RATE);
+        } else {
+          clearInterval(refreshInterval);
+        }
+      });
+      
+      // Start auto refresh by default
+      if (autoRefreshToggle.checked) {
+        refreshInterval = setInterval(fetchDashboardData, REFRESH_RATE);
+      }
+    }
+    
+    // Start when DOM is ready
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  </script>
+</body>
+</html>

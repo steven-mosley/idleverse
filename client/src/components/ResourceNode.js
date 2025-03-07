@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Html } from '@react-three/drei';
 import { useGameStore } from '../game/store';
 import socket from '../socket';
 
 const ResourceNode = ({ position, resource }) => {
   const [hovered, setHovered] = useState(false);
+  const nodeRef = useRef();
   const playerCharacter = useGameStore(state => state.characters[0]);
   const setTargetResource = useGameStore(state => state.setTargetResource);
   
@@ -39,6 +40,10 @@ const ResourceNode = ({ position, resource }) => {
   
   const handleClick = (e) => {
     e.stopPropagation();
+    
+    // Only handle left-click
+    if (e.button !== 0) return;
+    
     if (playerCharacter && socket && socket.connected) {
       console.log("ResourceNode: Setting target resource:", resource);
       setTargetResource(resource);
@@ -53,6 +58,7 @@ const ResourceNode = ({ position, resource }) => {
 
   return (
     <group 
+      ref={nodeRef}
       position={position}
       onClick={handleClick}
       onPointerOver={() => setHovered(true)}
@@ -96,6 +102,14 @@ const ResourceNode = ({ position, resource }) => {
         <mesh position={[0, 0.5, 0]}>
           <sphereGeometry args={[1.2, 16, 16]} />
           <meshBasicMaterial color="#FFFFFF" transparent opacity={0.2} wireframe />
+        </mesh>
+      )}
+      
+      {/* Add a hover indicator */}
+      {hovered && (
+        <mesh position={[0, 0.5, 0]}>
+          <sphereGeometry args={[1.1, 16, 16]} />
+          <meshBasicMaterial color="#FFFF00" transparent opacity={0.1} wireframe />
         </mesh>
       )}
     </group>

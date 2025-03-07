@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import StatusPanel from './UI/StatusPanel';
 import InventoryPanel from './UI/InventoryPanel';
 import ChatPanel from './UI/ChatPanel';
+import EnhancedDashboard from './UI/EnhancedDashboard';
 import { useGameStore } from '../game/store';
 import socket from '../socket';
 
@@ -9,6 +10,7 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
   const [character, setCharacter] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [displayTime, setDisplayTime] = useState(worldTime || '00:00');
+  const [showDashboard, setShowDashboard] = useState(false);
   
   const characters = useGameStore(state => state.characters);
   
@@ -57,11 +59,30 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
     }
   }, [connected]);
 
+  // Toggle dashboard visibility
+  const toggleDashboard = () => {
+    setShowDashboard(!showDashboard);
+  };
+
   return (
     <div className="game-ui">
       <div className="top-bar">
         <div className="game-title">Idleverse</div>
         <div id="world-info">World time: {displayTime}</div>
+        <button 
+          onClick={toggleDashboard}
+          style={{
+            marginLeft: 'auto',
+            background: showDashboard ? '#ffd700' : 'rgba(255,255,255,0.2)',
+            border: 'none',
+            color: showDashboard ? '#000' : '#fff',
+            padding: '5px 10px',
+            borderRadius: '3px',
+            cursor: 'pointer'
+          }}
+        >
+          {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
+        </button>
       </div>
 
       <StatusPanel 
@@ -78,6 +99,10 @@ const GameUI = ({ playerName, worldTime, storeTime, receivedGameState, connected
         setMessages={setChatMessages}
         connected={connected}
       />
+      
+      {showDashboard && (
+        <EnhancedDashboard character={character} />
+      )}
     </div>
   );
 };

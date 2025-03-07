@@ -7,6 +7,11 @@ class GameWorld {
     this.time = 0; // in seconds
     this.resourceIdCounter = 0;
     this.initialized = false;
+    this.lastUpdateTime = Date.now();
+    
+    // Constants for game balance
+    this.gatheringSpeed = 2.0;    // Higher = faster gathering
+    this.movementSpeed = 8.0;     // Higher = faster movement
   }
   
   initialize() {
@@ -22,12 +27,17 @@ class GameWorld {
     // Update world time
     this.time += deltaTime;
     
+    // Record real time for accurate delta calculations
+    const now = Date.now();
+    const realDeltaTime = (now - this.lastUpdateTime) / 1000;
+    this.lastUpdateTime = now;
+    
     // Update players
     for (const id in this.players) {
       const player = this.players[id];
       
       // Handle player actions based on state
-      if (player.state === 'moving' && player.targetResource) {
+      if (player.state === 'moving' && player.targetResource !== null) {
         const resource = this.resources.find(r => r.id === player.targetResource);
         
         if (resource && !resource.depleted) {
@@ -41,36 +51,60 @@ class GameWorld {
             player.state = 'gathering';
             player.actionProgress = 0;
           } else {
-            // Move towards target
-            const moveSpeed = player.moveSpeed || 5;
-            const moveAmount = moveSpeed * deltaTime;
+            // Move towards target - faster movement
+            const moveSpeed = (player.moveSpeed || this.movementSpeed);
+            const moveAmount = moveSpeed * realDeltaTime;
             const ratio = Math.min(moveAmount / distance, 1);
             
             player.position.x += dx * ratio;
             player.position.y += dy * ratio;
           }
         } else {
-          // Target resource is gone
+          // Target resource is depleted or doesn't exist
           player.targetResource = null;
           player.state = 'idle';
+          player.actionProgress = 0;
         }
-      } else if (player.state === 'gathering' && player.targetResource) {
+      } else if (player.state === 'gathering' && player.targetResource !== null) {
         const resource = this.resources.find(r => r.id === player.targetResource);
         
         if (resource && !resource.depleted) {
-          // Progress gathering action
-          const gatherSpeed = player.gatherSpeed || 1;
-          player.actionProgress += gatherSpeed * deltaTime;
+          // Progress gathering action - faster gathering
+          const gatherSpeed = (player.gatherSpeed || this.gatheringSpeed);
+          
+          // Use real deltaTime for more accurate progress even if server is lagging
+          player.actionProgress += gatherSpeed * realDeltaTime;
           
           if (player.actionProgress >= 1) {
-            // Gather success - handled by client reports for now
-            // This just resets the progress
+            // Gather success - handle resource collection immediately
+            const amountGathered = Math.min(1, resource.amount);
+            resource.amount -= amountGathered;
+            
+            // Add to player inventory
+            if (!player.inventory[resource.type]) {
+              player.inventory[resource.type] = 0;
+            }
+            player.inventory[resource.type] += amountGathered;
+            
+            // Check if resource depleted
+            if (resource.amount <= 0) {
+              resource.depleted = true;
+              player.targetResource = null;
+              player.state = 'idle';
+              player.actionProgress = 0;
+              
+              // Log resource depletion
+              console.log(`Resource ${resource.id} (${resource.type}) depleted by player ${player.name}`);
+            }
+            
+            // Reset progress for next gathering cycle
             player.actionProgress = 0;
           }
         } else {
-          // Resource depleted
+          // Resource is already depleted or doesn't exist
           player.targetResource = null;
           player.state = 'idle';
+          player.actionProgress = 0;
         }
       }
     }
@@ -85,8 +119,8 @@ class GameWorld {
       inventory: {},
       targetResource: null,
       actionProgress: 0,
-      moveSpeed: 5,
-      gatherSpeed: 1
+      moveSpeed: this.movementSpeed,
+      gatherSpeed: this.gatheringSpeed
     };
     
     return this.players[id];
@@ -111,7 +145,13 @@ class GameWorld {
   }
   
   getResources() {
+    // Only return non-depleted resources when explicitly filtering for active resources
     return this.resources;
+  }
+  
+  getActiveResources() {
+    // Only return non-depleted resources when explicitly filtering for active resources
+    return this.resources.filter(r => !r.depleted);
   }
   
   generateResources(count) {
@@ -180,6 +220,13 @@ class GameWorld {
       // Check if resource is depleted
       if (resource.amount <= 0) {
         resource.depleted = true;
+        
+        // If this player was targeting this resource, clear their target
+        if (player.targetResource === resourceId) {
+          player.targetResource = null;
+          player.state = 'idle';
+          player.actionProgress = 0;
+        }
       }
       
       return resource;

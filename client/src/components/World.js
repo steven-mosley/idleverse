@@ -13,21 +13,16 @@ const World = forwardRef((props, ref) => {
   const characters = useGameStore(state => state.characters);
   const otherPlayers = useGameStore(state => state.otherPlayers);
   
+  // Filter out depleted resources
+  const activeResources = resources.filter(resource => !resource.depleted);
+  
   // Debug log current state
   useEffect(() => {
     console.log("World component rendering with:");
-    console.log("- Resources:", resources.length);
+    console.log("- Active resources:", activeResources.length, "of", resources.length);
     console.log("- Characters:", characters.length);
     console.log("- Other players:", Object.keys(otherPlayers).length);
-    
-    if (characters.length > 0) {
-      console.log("Character data:", characters[0]);
-    }
-    
-    if (resources.length > 0) {
-      console.log("Sample resource:", resources[0]);
-    }
-  }, [resources, characters, otherPlayers]);
+  }, [resources, activeResources, characters, otherPlayers]);
 
   // Allow parent components to access world methods
   useImperativeHandle(ref, () => ({
@@ -39,8 +34,8 @@ const World = forwardRef((props, ref) => {
     <group ref={worldRef}>
       <Terrain />
       
-      {/* Render resource nodes */}
-      {Array.isArray(resources) && resources.map(resource => (
+      {/* Render only non-depleted resource nodes */}
+      {Array.isArray(activeResources) && activeResources.map(resource => (
         <ResourceNode 
           key={resource.id} 
           position={[resource.position.x, 0, resource.position.y]} 

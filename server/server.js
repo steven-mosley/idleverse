@@ -11,6 +11,9 @@ dotenv.config();
 // Import game world
 const GameWorld = require('./models/GameWorld');
 
+// Import dashboard controller
+const dashboardController = require('./controllers/dashboardController');
+
 // Create express app, HTTP server, and Socket.io instance
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +40,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize game world
 console.log("Initializing game world...");
@@ -77,6 +81,12 @@ app.get('/api/gamestate', (req, res) => {
   });
 });
 
+// API route for dashboard data
+app.get('/api/dashboard', (req, res) => {
+  const dashboardData = dashboardController.getDashboardData(gameWorld);
+  res.json(dashboardData);
+});
+
 // API route to force cleanup of all connections (for debugging)
 app.get('/api/reset-connections', (req, res) => {
   const playersBefore = Object.keys(gameWorld.getPlayers()).length;
@@ -108,6 +118,11 @@ app.get('/api/reset-connections', (req, res) => {
   });
 });
 
+// Serve the dashboard
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
@@ -115,6 +130,7 @@ server.listen(PORT, () => {
   console.log(`Open http://localhost:3000 in your browser to play`);
   console.log(`Server health check: http://localhost:${PORT}/api/health`);
   console.log(`Server game state: http://localhost:${PORT}/api/gamestate`);
+  console.log(`Server dashboard: http://localhost:${PORT}/dashboard`);
   console.log(`Reset connections: http://localhost:${PORT}/api/reset-connections`);
 });
 
